@@ -1,0 +1,20 @@
+# ignore hidden files
+.*
+
+# except .gitignore file
+!.gitignore
+
+# ingore builds & instal folders
+_*
+cmake-build*
+
+# ingore all executable files
+*.out
+
+# ignore data folder
+data/
+
+# ignore some other files
+Document
+mpi_hello.c
+omp_hello.c
