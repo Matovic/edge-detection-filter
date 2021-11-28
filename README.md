@@ -19,8 +19,8 @@ You can generate the project files by using the bash script from command line as
 ./runCMake.sh src/main.cpp
 ```
 
-After installation, the files should be installed into a new `_install` subdirectory. You can then run the examples as follows:
+After installation, the file should be installed into a new `_install` subdirectory. You can then run tests as follows:
 
 ```bash
-./runProgram.sh
+./testProgram.sh
 ```

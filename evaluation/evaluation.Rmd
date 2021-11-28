@@ -123,8 +123,26 @@ ggplot(p16, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") +
   geom_point() + ggtitle("16 processes")
 ```
 
+```{r}
+data_label= data %>%
+  mutate(labels = sub("^","P", sprintf("%sT%s",processes, threads)))
+data_label
+```
 
+```{r}
+ggplot(data_label, aes(x=factor(processes), y=factor(threads), label=labels)) + 
+  geom_point(aes(size=time, color=time)) + 
+  geom_text(nudge_y = 0.30)
+```
+Max:
 
+```{r}
+data_label[which.max(data_label$time),]
+```
 
+Min:
 
+```{r}
+data_label[which.min(data_label$time),]
+```
 
