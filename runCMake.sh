@@ -13,7 +13,7 @@ dir=$(pwd)'/'
 # check number of arg
 if [ $# -ne $EXPECTED_ARGS ]
 then
-	error_msg  "\nInvalid number of arguments, please check the inputs and try again.\n\nExpected name of C file\n"
+	error_msg  "\nInvalid number of arguments, please check the inputs and try again.\n\nExpected name of C/C++ file\n"
 
 # check if given file exist
 elif ! [ -f "${dir}$1" ]
