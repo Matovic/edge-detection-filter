@@ -1,8 +1,9 @@
 # ignore hidden files
 .*
 
-# except .gitignore file
+# except .gitignore file & .gitattributes
 !.gitignore
+!.gitattributes
 
 # ingore builds & instal folders
 _*
@@ -18,3 +19,6 @@ data/
 Document
 mpi_hello.c
 omp_hello.c
+.Rproj.user
+*.html
+

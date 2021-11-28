@@ -37,97 +37,56 @@ void toUpper(std::string& str)
 }
 
 // Processes command line arguments into a tuple of number of threads, max depth, heuristic function and time.
-std::tuple<int, int, int, int> processArguments(const int& argc, char* argv[])
+int processArguments(const int& argc, char* argv[])
 {
-    // numThreads = -1, maxDepth = -1, heuristic = -1, moveTime = -1 are all not valid
-    int numThreads = -1, maxDepth = -1, heuristic = -1, moveTime = -1;
+    int numThreads = -1;    // numThreads = -1 is not valid
     std::vector<std::string> args(argv + 1, argc + argv);
 
     for (std::string consoleSwitch : args)
     {
-        // make all characters uppercase in given string.
+        // make all characters uppercase in given string
         toUpper(consoleSwitch);
-        std::cout << consoleSwitch << '\n';
-        // check given numbers on command line
+
+        // check given numbers on command line & set up if it is right
         if (numThreads == 0)
             numThreads = checkNumberOnConsoleSwitch(consoleSwitch);
 
-        /*else if (maxDepth == 0)
-            maxDepth = checkNumberOnConsoleSwitch(consoleSwitch);
-
-        else if (heuristic == 0)
-            heuristic = checkNumberOnConsoleSwitch(consoleSwitch);
-
-        else if (moveTime == 0)
-            moveTime = checkNumberOnConsoleSwitch(consoleSwitch);*/
-
-        // check given commands on command line
+        // check given command on command line is --THREADS & numThreads is not set up
         else if (consoleSwitch.compare("--THREADS") == 0 && numThreads == -1)
             numThreads = 0;
-        /*
-        else if (consoleSwitch.compare("--TIME") == 0 && moveTime == -1)
-            moveTime = 0;
 
-        else if (consoleSwitch.compare("--FUNC") == 0 && heuristic == -1)
-            heuristic = 0;
-
-        else if (consoleSwitch.compare("--DEPTH") == 0 && maxDepth == -1)
-            maxDepth = 0;*/
-
+        // given command is wrong
         else
         {
             std::cerr << "ERROR 00: Wrong parameters!\n";
             std::exit(EXIT_FAILURE);
         }
     }
-    return std::make_tuple(numThreads, maxDepth, heuristic, moveTime);
+    return numThreads;
 }
 
 // Checks if given command line arguments are fit to be parameters for an Othello game.
-int checkParameters(const int& numThreads, const int& maxDepth, const int& heuristic, const int& moveTime)
+int checkParameters(const int& numThreads)
 {
     if (numThreads < 1)
     {
         std::cerr << "ERROR 01: Number of threads can not be less than 1!\n";
         return 1;
     }
-/*
-    if (maxDepth < 1 || maxDepth > 15)
-    {
-        std::cerr << "ERROR 02: Incorrect depth! Depth can be from 5 to 15.\n";
-        return 1;
-    }
-
-    if (heuristic < 1 || heuristic > 2)
-    {
-        std::cerr << "ERROR 03: Heuristic function is not known!\n";
-        return 1;
-    }
-
-    if (moveTime < 5 || moveTime > 30)
-    {
-        std::cerr << "ERROR 04: Incorrect time! Time can be from 5 to 30.\n";
-        return 1;
-    }
-    */
     return 0;
 }
 
 // Get parameters from command line arguments.
-std::tuple<int, int, int, int> getParameters(const int& argc, char* argv[])
+int getParameters(const int& argc, char* argv[])
 {
     // numThreads = -1, maxDepth = -1, heuristic = -1, moveTime = -1 are all not valid
-    int numThreads = -1, maxDepth = -1, heuristic = -1, moveTime = -1;
-    std::tie(numThreads, maxDepth, heuristic, moveTime) = processArguments(argc, argv);
+    int numThreads = processArguments(argc, argv);
+    //numThreads = processArguments(argc, argv);
 
-    if (maxDepth == -1) maxDepth = 15;
-    if (heuristic == -1) heuristic = 2;
-    if (moveTime == -1) moveTime = 15;
-
-    if (checkParameters(numThreads, maxDepth, heuristic, moveTime))
+    if (checkParameters(numThreads))
         std::exit(EXIT_FAILURE);
 
-    return std::make_tuple(numThreads, maxDepth, heuristic, moveTime);
+    return numThreads;
 }
 
 int main(int argc, char *argv[]) 
@@ -140,9 +99,8 @@ int main(int argc, char *argv[])
 	}
 
     // numThreads = -1, maxDepth = -1, heuristic = -1, moveTime = -1 are all not valid
-    int numThreads = -1, maxDepth = -1, heuristic = -1, moveTime = -1;
-    std::tie(numThreads, maxDepth, heuristic, moveTime) = getParameters(argc, argv);
-
+    int numThreads = -1;
+    numThreads = getParameters(argc, argv);
 /*
 	// Reading image
 	cv::Mat img = cv::imread("data/4987_21_HE.tif");
@@ -199,6 +157,41 @@ int main(int argc, char *argv[])
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);                   // get my process id
 	MPI_Get_processor_name(processor_name, &namelen);       // get processor name
 
+    printf ("Hello from process %d/%d on %s.\n", rank, numprocs, processor_name);
+
+    if (numprocs >= 2) {
+
+        int number;
+        if (rank == 0)
+        {
+            number = -42;
+            MPI_Send(&number, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+            printf("Process 0 sent number %d to process 1\n", number);
+            #pragma omp parallel default(shared) private(iam, np)
+            {
+                np = omp_get_num_threads();
+                iam = omp_get_thread_num();
+                std::cout << "Hello from thread " << iam << " out of " << np <<
+                          " from process " << rank << " out of " << numprocs << " on " <<
+                          processor_name <<"\n";
+            }
+        }
+        else if (rank == 1)
+        {
+            MPI_Recv(&number, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            printf("Process 1 received number %d from process 0\n", number);
+            #pragma omp parallel default(shared) private(iam, np)
+            {
+                np = omp_get_num_threads();
+                iam = omp_get_thread_num();
+                std::cout << "Hello from thread " << iam << " out of " << np <<
+                          " from process " << rank << " out of " << numprocs << " on " <<
+                          processor_name <<"\n";
+            }
+        }
+
+    }
+    /*
 	#pragma omp parallel default(shared) private(iam, np)
 	{
         np = omp_get_num_threads();
@@ -206,7 +199,7 @@ int main(int argc, char *argv[])
         std::cout << "Hello from thread " << iam << " out of " << np <<
             " from process " << rank << " out of " << numprocs << " on " << processor_name <<"\n";
 	}
-
+*/
     // End MPI Environment
 	MPI_Finalize();         // Terminates MPI environment
 

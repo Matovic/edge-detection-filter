@@ -3,7 +3,7 @@
 ## Installation instructions
 
 Depending on your system of choice you will need to install the following dependencies:
-* [mpiCC](https://www.open-mpi.org/doc/current/man1/mpicc.1.php) - Open MPI C wrapper compiler 
+* mpiCC - Open MPI C++ wrapper compiler 
 * [CMake](https://cmake.org) build system
 * [Open MPI](https://www.mpi-forum.org/) - The Message Passing Interface
 * [OpenMP](https://www.openmp.org/) - The Open Multi-Processing
