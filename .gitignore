@@ -12,8 +12,9 @@ cmake-build*
 # ingore all executable files
 *.out
 
-# ignore data folder
+# ignore data & output folder
 data/
+output/
 
 # ignore some other files
 Document
