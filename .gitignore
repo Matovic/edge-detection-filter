@@ -22,4 +22,5 @@ mpi_hello.c
 omp_hello.c
 .Rproj.user
 *.html
+*.ipynb
 
