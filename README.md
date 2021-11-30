@@ -1,6 +1,6 @@
 # Edge Detection Filter
 
-Programs outputs, images with edge detection, are located in a new `output` subdirectory based on input images found in the `data` folder. 
+Program's outputs, images with edge detection, are located in a new `output` subdirectory created based on names of input images found in the `data` folder.
 
 ## Installation instructions
 
@@ -34,4 +34,11 @@ Preview from the evaluation file:
 
 <p align="center">
 	<img src="./figures/time_tests.png">
+</p>
+
+One of the tested inputs with a preview of one of his outputs with settings of low threshold equals 50 and ratio equals 2:  
+
+<p align="center">
+	<img src="./data/lena.bmp">
+	<img src="./data/lena/lena_LT50_R2.bmp">
 </p>
