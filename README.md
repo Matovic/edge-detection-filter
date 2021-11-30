@@ -2,6 +2,9 @@
 
 Program's outputs, images with edge detection, are located in a new `output` subdirectory created based on names of input images found in the `data` folder.
 
+## Authors
+ - [Erik Matovič](https://github.com/Matovic)
+ 
 ## Installation instructions
 
 Depending on your system of choice you will need to install the following dependencies:
