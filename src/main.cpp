@@ -67,23 +67,23 @@ std::tuple<int, int, int> processArguments(const int& argc, char* argv[])
         else if (ratio == 0)
             ratio = checkNumberOnConsoleSwitch(consoleSwitch);
 
-        // check given command on command line is --THREADS & numThreads is not set up
+            // check given command on command line is --THREADS & numThreads is not set up
         else if (consoleSwitch.compare("--THREADS") == 0 && numThreads == -1)
             numThreads = 0;
 
-        // check given command on command line is --THRESHOLD & lowThreshold is not set up
+            // check given command on command line is --THRESHOLD & lowThreshold is not set up
         else if (consoleSwitch.compare("--THRESHOLD") == 0 && lowThreshold == -1)
             lowThreshold = 0;
 
-        // check given command on command line is --RATIO & lowThreshold is not set up
+            // check given command on command line is --RATIO & lowThreshold is not set up
         else if (consoleSwitch.compare("--RATIO") == 0 && ratio == -1)
             ratio = 0;
 
-        // given command is wrong
+            // given command is wrong
         else
         {
             std::cerr << "ERROR 00: Wrong commands!\n";
-            MPI_Finalize();         // Terminates MPI environment
+            //MPI_Finalize();         // Terminates MPI environment
             std::exit(EXIT_FAILURE);
         }
     }
@@ -124,7 +124,7 @@ std::tuple<int, int, int> getParameters(const int& argc, char* argv[])
 
     if (checkParameters(numThreads, lowThreshold, ratio))
     {
-        MPI_Finalize();         // Terminates MPI environment
+        //MPI_Finalize();         // Terminates MPI environment
         std::exit(EXIT_FAILURE);
     }
 
@@ -132,7 +132,7 @@ std::tuple<int, int, int> getParameters(const int& argc, char* argv[])
 }
 
 cv::Mat cannyEdgeDetector(const cv::Mat& img, const unsigned int& lowThreshold,
-                                const unsigned int& ratio, const unsigned int& kernel_size)
+                          const unsigned int& ratio, const unsigned int& kernel_size)
 {
     // Blur the image for better edge detection
     cv::Mat img_blur;
@@ -145,80 +145,14 @@ cv::Mat cannyEdgeDetector(const cv::Mat& img, const unsigned int& lowThreshold,
     return edges;
 }
 
-// Computes the x component of the gradient vector
-// at a given point in a image.
-// returns gradient in the x direction
-int xGradient(cv::Mat image, int x, int y)
-{
-    return image.at<int>(y-1, x-1) +
-           2*image.at<int>(y, x-1) +
-           image.at<int>(y+1, x-1) -
-           image.at<int>(y-1, x+1) -
-           2*image.at<int>(y, x+1) -
-           image.at<int>(y+1, x+1);
-}
-
-// Computes the y component of the gradient vector
-// at a given point in a image
-// returns gradient in the y direction
-
-int yGradient(cv::Mat image, int x, int y)
-{
-    return image.at<int>(y-1, x-1) +
-           2*image.at<int>(y-1, x) +
-           image.at<int>(y-1, x+1) -
-           image.at<int>(y+1, x-1) -
-           2*image.at<int>(y+1, x) -
-           image.at<int>(y+1, x+1);
-}
-
-// https://programming-techniques.com/2013/03/sobel-and-prewitt-edge-detector-in-c-image-processing.html
-cv::Mat sobelEdgeDetector(cv::Mat& img, const unsigned int& numThreads)
-{
-    // sum based on color of RGB color space
-    float sumRed = 0, sumGreen = 0, sumBlue = 0;
-    // convolution matrix
-    float edge_filter[edge_width][edge_height] =
-            {
-                    //{-1, -1, -1},
-                    //{-1, 8, -1},
-                    //{-1, -1, -1}
-                    {-0.125, -0.125, -0.125},
-                    {-0.125, 1, -0.125},
-                    {-0.125, -0.125, -0.125}
-            };
-    int edge_sum=0;   // Beware of the naughty zero
-    int gx, gy, sum;
-
-    cv::Mat dst = img.clone();
-
-    auto img_width = img.size().width, img_height = img.size().height;
-
-    for(int y = 0; y < img.rows; y++)
-        for(int x = 0; x < img.cols; x++)
-            dst.at<int>(y,x) = 0.0;
-
-    for(int y = 1; y < img.rows - 1; y++){
-        for(int x = 1; x < img.cols - 1; x++){
-            gx = xGradient(img, x, y);
-            gy = yGradient(img, x, y);
-            sum = abs(gx) + abs(gy);
-            sum = sum > 255 ? 255:sum;
-            sum = sum < 0 ? 0 : sum;
-            dst.at<int>(y,x) = sum;
-        }
-    }
-    return dst;
-}
-
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     // expected --THREADS <number of threads> --THRESHOLD <lowThreashold> --RATIO <ratio>
     if (argc != 7) //if (argc != 3 && argc != 5)
-	{
-		std::cerr << "ERROR 00: Invalid parameters\n";
-		return 1;
-	}
+    {
+        std::cerr << "ERROR 00: Invalid parameters\n";
+        return 1;
+    }
 
     int numProc, rank = 0, namelen;
     char processor_name[MPI_MAX_PROCESSOR_NAME];
@@ -238,8 +172,11 @@ int main(int argc, char *argv[])
     omp_set_num_threads(numThreads);
 
     //std::string inputFile;
+    std::vector<cv::Mat> v_img;
+    std::vector<cv::Mat> v_out_img;
+    std::vector<std::string> v_fullpath;
 
-    // only 1 process with ID=0 reads data
+    // only 1 process(root) with ID=0 reads data
     if (rank == 0)
     {
         std::string path = "data/";         // path of input folder
@@ -352,7 +289,7 @@ int main(int argc, char *argv[])
             else
             {
                 std::cerr << "ERROR 04: Could not map input image with its output folder!\n";
-                MPI_Finalize();         // Terminates MPI environment
+                //MPI_Finalize();         // Terminates MPI environment
                 return EXIT_FAILURE;
             }
             //std::cout << files[i] << " out: "<< output_folders[indexOut] << '\n';
@@ -373,6 +310,10 @@ int main(int argc, char *argv[])
             std::string fullPath = ss.str();
             ss.str("");
             //std::cout << "Full Path: " << fullPath << '\n';
+            // file is already in the vector
+            if (std::find(v_fullpath.begin(), v_fullpath.end(), fullPath) != v_fullpath.end())
+                continue;
+            v_fullpath.push_back(fullPath);
 
             // Read image as colored image(1 as a flag)
             //cv::Mat img = cv::imread("data/4987_21_HE.tif", 1); // default Mat is CV_8UC3(8-bit 3-channel color image) matrix
@@ -381,17 +322,23 @@ int main(int argc, char *argv[])
             if (img.empty())
             {
                 std::cerr << "ERROR 02: Could not open or find the image!\n";
-                MPI_Finalize();         // Terminates MPI environment
+                //MPI_Finalize();         // Terminates MPI environment
                 return EXIT_FAILURE;
             }
 
+            //if (std::find(v_img.begin(), v_img.end(), img) != v_img.end())
+            //    continue;
+            v_img.push_back(img);
+
             // Convert to graycsale
+/*
             cv::Mat img_gray;
             cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
 
             // Canny edge detection
             cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
-/*
+*/
+ /*
             std::string str_grey = "Greyscale ";
             std::string str_edge= "Edge ";
 
@@ -421,23 +368,71 @@ int main(int argc, char *argv[])
             if (!img.empty() && !img_gray.empty() && !edges.empty())
             {
     */
-                /*cv::imshow("Original image", img);
-                cv::imshow(str_grey, img_gray);
-                cv::imshow(str_edge, edges);
-                cv::waitKey(0);*/
-    /*
-                // Save the frame into a file
-                cv::imwrite(fullPath, edges);
-                //std::cout << fullPath;
-            }
-*/
+            /*cv::imshow("Original image", img);
+            cv::imshow(str_grey, img_gray);
+            cv::imshow(str_edge, edges);
+            cv::waitKey(0);*/
+            /*
+                        // Save the frame into a file
+                        cv::imwrite(fullPath, edges);
+                        //std::cout << fullPath;
+                    }
+        */
             // Save the frame into a file
-            cv::imwrite(fullPath, edges);
-            printf("Rank: %d/%d", rank, numProc);
+            //cv::imwrite(fullPath, edges);
+            //printf("Rank: %d/%d", rank, numProc);
         }
     }
 
-	MPI_Finalize();         // Terminates MPI environment
+    // broadcast images
+    MPI_Bcast(v_img.data(), v_img.size() * sizeof(decltype(v_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
+
+    // synchronize the image processing:
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    for (int i = 0; i < v_img.size(); ++i)
+    {
+        //printf("Hello from process %d/%d on %s.\n", rank, numProc, processor_name);
+
+        // Convert to graycsale
+        cv::Mat img_gray;
+        cv::cvtColor(v_img[i], img_gray, cv::COLOR_BGR2GRAY);
+
+        // Canny edge detection
+        cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
+
+        // push and broadcast output image
+        v_out_img.push_back(edges);
+        MPI_Bcast(v_out_img.data(), v_out_img.size() * sizeof(decltype(v_out_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
+        //printf("Rank: %d/%d", rank, numProc);
+    }
+
+    // synchronize the image processing:
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // write images on the root
+    if (rank == 0)
+    {
+        // Set window
+        cv::namedWindow("Original image", cv::WINDOW_NORMAL);
+
+        //Resize window
+        cv::resizeWindow("Original image", 512, 512);
+
+        // Display original image
+        for (int index = 0; index < v_out_img.size(); ++index) {
+            if (!v_out_img[index].empty())
+            {
+                //cv::imshow("Original image", v_out_img[index]);
+                //cv::waitKey(0);
+
+                // Save the frame into a file
+                cv::imwrite(v_fullpath[index], v_out_img[index]);
+            }
+            //printf("Rank: %d/%d", rank, numProc);
+        }
+    }
+    MPI_Finalize();         // Terminates MPI environment
     //cv::destroyAllWindows();
-	return 0;
+    return 0;
 }

@@ -24,3 +24,6 @@ After installation, the file should be installed into a new `_install` subdirect
 ```bash
 ./testProgram.sh
 ```
+## Evaluation
+
+In the evaluation folder we provided time tests.
