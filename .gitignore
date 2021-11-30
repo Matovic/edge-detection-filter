@@ -12,9 +12,15 @@ cmake-build*
 # ingore all executable files
 *.out
 
-# ignore data & output folder
-data/
-output/
+# ignore input & output files
+data/output/
+output/*_HE/
+
+# except lena and ball images & folders
+#!data/lena.bmp
+#!data/ball*
+#!output/lena/
+#!output/ball/
 
 # ignore some other files
 Document

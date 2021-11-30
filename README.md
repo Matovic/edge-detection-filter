@@ -1,5 +1,7 @@
 # Edge Detection Filter
 
+Programs outputs, images with edge detection, are located in a new `output` subdirectory based on input images found in the `data` folder. 
+
 ## Installation instructions
 
 Depending on your system of choice you will need to install the following dependencies:
@@ -26,4 +28,10 @@ After installation, the file should be installed into a new `_install` subdirect
 ```
 ## Evaluation
 
-In the evaluation folder we provided time tests.
+In the evaluation folder, we provided time tests. We created a bash script for the time tests that write a specific time of each program's execution in a CSV file. Subsequently, we conducted an evaluation using the programming language R, where we evaluated our tests using descriptive statistics.
+
+Preview from the evaluation file:  
+
+<p align="center">
+	<img src="./figures/time_tests.png">
+</p>

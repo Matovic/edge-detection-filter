@@ -20,15 +20,15 @@ do
 		hosts+=','
 	fi;
     done
-    #for lowThreshold in 1 10 50 100
-    #do
-    #  for ratio in 1 2 3
-    #  do
+    for lowThreshold in 1 10 50 100
+    do
+      for ratio in 1 2 3
+      do
         # -n gets rid off newline at the end
-    echo -n "$numProcess,$numThreads," >> evaluation/time_tests.csv
-    # time command displays the completion time of a script
-    { time mpirun -n $numProcess --host $hosts _install/edge_detection --THREADS $numThreads --THRESHOLD 50 --RATIO 2 ; } 2>> evaluation/time_tests.csv
-    #  done
-    #done
+    	echo -n "$numProcess,$numThreads," >> evaluation/time_tests.csv
+    	# time command displays the completion time of a script
+    	{ time mpirun -n $numProcess --host $hosts _install/edge_detection --THREADS $numThreads --THRESHOLD $lowThreshold --RATIO $ratio ; } 2>> evaluation/time_tests.csv
+      done
+    done
   done
 done

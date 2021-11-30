@@ -187,18 +187,15 @@ int main(int argc, char *argv[])
         #pragma omp parallel default(shared)
         {
             auto entry = begin(itr);
-            #pragma omp critical            // writing to a vector, more threads can read same file, etc.
+
+            // writing to a vector, more threads can read same file, etc.
+            #pragma omp critical
             {
                 for (; begin(entry) != end(itr); ++entry)
                 {
-                    //if (omp_get_thread_num() == 0)
-                    //    std::cout << "Threads:" << omp_get_num_threads() << std::endl;
-
                     std::string file = entry->path();           // get path of a directory or of a file
                     if (std::filesystem::is_directory(file))    // check if string is not a directory
                         continue;                               // skip directories
-                    //std::cout << "name: " << file << '\n';
-                    //std::cout << "Thread num: " << omp_get_thread_num() << '\n';
 
                     // file is already in the vector
                     if (std::find(files.begin(), files.end(), file) != files.end())
@@ -208,10 +205,6 @@ int main(int argc, char *argv[])
             }
         }
 
-        /*std::cout << files.size();
-        for (int i = 0; i < files.size() - 1; ++i)
-            std::cout << files[i] << '\n';*/
-
         // output directory
         std::string out_dir = "./output";
 
@@ -220,7 +213,6 @@ int main(int argc, char *argv[])
         {
             // create directory to store files into
             std::string folderCreateCommand = "mkdir " + out_dir;
-            //std::cout << folderCreateCommand << '\n';
             system(folderCreateCommand.c_str());
         }
 
@@ -248,9 +240,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        /*for(const auto& f : output_folders)
-            std::cout << f << '\n';*/
-
+        // create output folders based on name of files
         #pragma omp parallel default(shared)
         {
             int i = 0;
@@ -265,14 +255,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        // process files
+        // get input files
         for (int i = 0; i < files.size() - 1; i++)
         {
-            // files are processed by different processors because of an MPI
-            //if (i % numProc != rank)
-            //    continue;
-            //printf ("Hello from process %d/%d on %s.\n", rank, numProc, processor_name);
-
             // extract name of a file
             size_t pos = files[i].find("/") + 1;
             size_t end_pos = files[i].find(".");
@@ -325,62 +310,7 @@ int main(int argc, char *argv[])
                 //MPI_Finalize();         // Terminates MPI environment
                 return EXIT_FAILURE;
             }
-
-            //if (std::find(v_img.begin(), v_img.end(), img) != v_img.end())
-            //    continue;
             v_img.push_back(img);
-
-            // Convert to graycsale
-/*
-            cv::Mat img_gray;
-            cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
-
-            // Canny edge detection
-            cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
-*/
- /*
-            std::string str_grey = "Greyscale ";
-            std::string str_edge= "Edge ";
-
-            // Set window
-            cv::namedWindow(str_edge, cv::WINDOW_NORMAL);
-            cv::namedWindow(str_grey, cv::WINDOW_NORMAL);
-            cv::namedWindow("Original image", cv::WINDOW_NORMAL);
-
-            //Resize window
-            cv::resizeWindow(str_edge, 512, 512);
-            cv::resizeWindow(str_grey, 512, 512);
-            cv::resizeWindow("Original image", 512, 512);
-*/
-/*
-            if (numThreads > 0)
-            {
-                std::string specification = "T" + std::to_string(numThreads);
-                filename_output.insert(filename_output.find("."), specification);
-            }
-            else if (lowThreshold > 0 && ratio > 0)
-            {
-                std::string specification = "T" + std::to_string(lowThreshold) + "R" + std::to_string(ratio);
-                filename_output.insert(filename_output.find("."), specification);
-            }
-
-            // Display original image
-            if (!img.empty() && !img_gray.empty() && !edges.empty())
-            {
-    */
-            /*cv::imshow("Original image", img);
-            cv::imshow(str_grey, img_gray);
-            cv::imshow(str_edge, edges);
-            cv::waitKey(0);*/
-            /*
-                        // Save the frame into a file
-                        cv::imwrite(fullPath, edges);
-                        //std::cout << fullPath;
-                    }
-        */
-            // Save the frame into a file
-            //cv::imwrite(fullPath, edges);
-            //printf("Rank: %d/%d", rank, numProc);
         }
     }
 
@@ -426,8 +356,9 @@ int main(int argc, char *argv[])
                 //cv::imshow("Original image", v_out_img[index]);
                 //cv::waitKey(0);
 
-                // Save the frame into a file
-                cv::imwrite(v_fullpath[index], v_out_img[index]);
+                // Save the frame into a file if it does not exists
+                if (!std::filesystem::exists(v_fullpath[index]))
+                    cv::imwrite(v_fullpath[index], v_out_img[index]);
             }
             //printf("Rank: %d/%d", rank, numProc);
         }
