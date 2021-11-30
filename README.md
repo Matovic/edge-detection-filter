@@ -40,5 +40,5 @@ One of the tested inputs with a preview of one of his outputs with settings of l
 
 <p align="center">
 	<img src="./data/lena.bmp">
-	<img src="./data/lena/lena_LT50_R2.bmp">
+	<img src="./output/lena/lena_LT50_R2.bmp">
 </p>
