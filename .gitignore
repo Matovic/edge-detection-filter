@@ -16,12 +16,6 @@ cmake-build*
 data/output/
 output/*_HE/
 
-# except lena and ball images & folders
-#!data/lena.bmp
-#!data/ball*
-#!output/lena/
-#!output/ball/
-
 # ignore some other files
 Document
 mpi_hello.c
