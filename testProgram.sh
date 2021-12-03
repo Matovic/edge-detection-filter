@@ -5,6 +5,8 @@ TIMEFORMAT=%R
 # test on localhost
 echo "processes,threads,time" > evaluation/time_tests.csv
 host="127.0.0.1"
+lowThreshold=50
+ratio=2
 for numProcess in 1 2 3 4 8 16
 do
 #  echo ""
@@ -20,15 +22,15 @@ do
 		hosts+=','
 	fi;
     done
-    for lowThreshold in 1 10 50 100
-    do
-      for ratio in 1 2 3
-      do
+    #for lowThreshold in 1 10 50 100
+    #do
+    #  for ratio in 1 2 3
+    #  do
         # -n gets rid off newline at the end
-    	echo -n "$numProcess,$numThreads," >> evaluation/time_tests.csv
+    echo -n "$numProcess,$numThreads," >> evaluation/time_tests.csv
     	# time command displays the completion time of a script
-    	{ time mpirun -n $numProcess --host $hosts _install/edge_detection --THREADS $numThreads --THRESHOLD $lowThreshold --RATIO $ratio ; } 2>> evaluation/time_tests.csv
-      done
-    done
+    { time mpirun -n $numProcess --host $hosts _install/edge_detection --THREADS $numThreads --THRESHOLD $lowThreshold --RATIO $ratio ; } 2>> evaluation/time_tests.csv
+    #  done
+    #done
   done
 done

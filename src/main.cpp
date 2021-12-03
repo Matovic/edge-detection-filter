@@ -148,7 +148,7 @@ cv::Mat cannyEdgeDetector(const cv::Mat& img, const unsigned int& lowThreshold,
 int main(int argc, char *argv[])
 {
     // expected --THREADS <number of threads> --THRESHOLD <lowThreashold> --RATIO <ratio>
-    if (argc != 7) //if (argc != 3 && argc != 5)
+    if (argc != 7)
     {
         std::cerr << "ERROR 00: Invalid parameters\n";
         return 1;
@@ -158,169 +158,192 @@ int main(int argc, char *argv[])
     char processor_name[MPI_MAX_PROCESSOR_NAME];
     int iam = 0, np = 1;
 
-    // Initialize MPI
-    MPI_Init(&argc, &argv);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProc);               // get number of processes
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);                  // get my process id
-    MPI_Get_processor_name(processor_name, &namelen);      // get processor name
+    MPI_Init(&argc, &argv);                                 // initialize MPI
+    MPI_Comm_size(MPI_COMM_WORLD, &numProc);                // get number of processes
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);                   // get my process id
+    MPI_Get_processor_name(processor_name, &namelen);       // get processor name
 
     // get parameters
     auto t = getParameters(argc, argv);
     int numThreads = std::get<0>(t), lowThreshold = std::get<1>(t), ratio = std::get<2>(t), kernel_size = edge_height;
+    omp_set_num_threads(numThreads);    // set number of threads if it was given
 
-    // set number of threads if it was given
-    omp_set_num_threads(numThreads);
-
-    //std::string inputFile;
+    // vectors of images
     std::vector<cv::Mat> v_img;
     std::vector<cv::Mat> v_out_img;
     std::vector<std::string> v_fullpath;
 
-    // only 1 process(root) with ID=0 reads data
-    if (rank == 0)
+    std::string path = "data/";                 // path of input folder
+    std::string out_dir = "./output";           // path for output directory
+
+    std::vector<std::string> files;             // vector of paths of input files
+    std::vector<std::string> output_folders;    // vector of output folders where to store images
+
+    // get all files
+    auto itr = std::filesystem::directory_iterator(path);   // iterator
+    int counter = 0;
+    for (auto entry = begin(itr); begin(entry) != end(itr); ++entry, ++counter)
     {
-        std::string path = "data/";         // path of input folder
-        std::vector<std::string> files;     // vector of input files
-        auto itr = std::filesystem::directory_iterator(path);
+        std::string file = entry->path();           // get path of a directory or of a file
+        if (std::filesystem::is_directory(file))    // check if string is not a directory
+            continue;                               // skip directories
 
-        // get all files
-        #pragma omp parallel default(shared)
-        {
-            auto entry = begin(itr);
+        // files are processed by different processors because of an MPI
+        if (counter % numProc != rank)
+            continue;
 
-            // writing to a vector, more threads can read same file, etc.
-            #pragma omp critical
-            {
-                for (; begin(entry) != end(itr); ++entry)
-                {
-                    std::string file = entry->path();           // get path of a directory or of a file
-                    if (std::filesystem::is_directory(file))    // check if string is not a directory
-                        continue;                               // skip directories
+        // file is already in the vector
+        if (std::find(files.begin(), files.end(), file) != files.end())
+            continue;
+        files.push_back(file);                      // push back file into the vector
+    }
 
-                    // file is already in the vector
-                    if (std::find(files.begin(), files.end(), file) != files.end())
-                        continue;
-                    files.push_back(file);                      // push back file into the vector
-                }
+    // if output directory does not exist, create one
+    if (!std::filesystem::is_directory(out_dir))
+    {
+        // create directory to store files into
+        std::string folderCreateCommand = "mkdir " + out_dir;
+        system(folderCreateCommand.c_str());
+    }
+
+    // extract name of input files in order to create output folders
+    for (int i = 0; i < files.size(); ++i)
+    {
+        // extract name of a file
+        size_t pos = files[i].find("/") + 1;    // in order to get rid of folder
+        size_t end_pos = files[i].find(".");    // in order to get rid of suffix
+        size_t len = end_pos - pos;                // in order to get file's name without suffix
+
+        // create new folder name based on name of a file
+        std::string folderName = out_dir + '/' + files[i].substr(pos,len);
+
+        // files are processed by different processors because of an MPI
+        if (i % numProc != rank)
+            continue;
+
+        // if file is already in the vector
+        if (std::find(output_folders.begin(), output_folders.end(), folderName) != output_folders.end())
+            continue;
+        else output_folders.push_back(folderName);  // create directory to store files into
+    }
+
+    // create output folders based on name of files
+    #pragma omp parallel default(shared)
+    {
+        int i;
+        #pragma omp for private(i)
+        for (i = 0; i < output_folders.size(); ++i) {
+            // if output directory does not exist, create one
+            if (!std::filesystem::is_directory(output_folders[i])) {
+                std::string folderCreateCommand = "mkdir " + output_folders[i];
+                system(folderCreateCommand.c_str());
             }
-        }
-
-        // output directory
-        std::string out_dir = "./output";
-
-        // directory does not exist
-        if (!std::filesystem::is_directory(out_dir))
-        {
-            // create directory to store files into
-            std::string folderCreateCommand = "mkdir " + out_dir;
-            system(folderCreateCommand.c_str());
-        }
-
-        std::vector<std::string> output_folders;
-        #pragma omp parallel default(shared)
-        {
-            int i = 0;
-            #pragma omp for private(i)
-            for (i = 0; i < files.size() - 1; ++i)
-            {
-                // extract name of a file
-                size_t pos = files[i].find("/") + 1;
-                size_t end_pos = files[i].find(".");
-                size_t len = end_pos - pos;
-
-                // create new folder based on name of a file
-                std::string folderName = out_dir + '/' + files[i].substr(pos,len);
-                if (std::find(files.begin(), files.end(), folderName) != files.end())
-                    continue;           // file is already in the vector
-                else                    // create directory to store files into
-                #pragma omp critical
-                {
-                    output_folders.push_back(folderName);
-                }
-            }
-        }
-
-        // create output folders based on name of files
-        #pragma omp parallel default(shared)
-        {
-            int i = 0;
-            #pragma omp for private(i)
-            for (i = 0; i < output_folders.size(); ++i)
-            {
-                // directory does not exist
-                if (!std::filesystem::is_directory(output_folders[i])) {
-                    std::string folderCreateCommand = "mkdir " + output_folders[i];
-                    system(folderCreateCommand.c_str());
-                }
-            }
-        }
-
-        // get input files
-        for (int i = 0; i < files.size() - 1; i++)
-        {
-            // extract name of a file
-            size_t pos = files[i].find("/") + 1;
-            size_t end_pos = files[i].find(".");
-            size_t len = end_pos - pos;
-
-            // find output file
-            std::string o_folder = out_dir + '/' + files[i].substr(pos,len);
-            std::vector<std::string>::iterator it = std::find(output_folders.begin(), output_folders.end(),
-                                                              o_folder);
-            //std::cout << "o_folder: " << o_folder << '\n';
-            int indexOut = 0;
-            if (it != output_folders.end())
-                indexOut = std::distance(output_folders.begin(), it);
-            else
-            {
-                std::cerr << "ERROR 04: Could not map input image with its output folder!\n";
-                //MPI_Finalize();         // Terminates MPI environment
-                return EXIT_FAILURE;
-            }
-            //std::cout << files[i] << " out: "<< output_folders[indexOut] << '\n';
-
-            // get new file name
-            len = files[i].size() - pos;
-            std::string filename_output = files[i].substr(pos,len);//files[i];
-            //std::string specification = "_P" + std::to_string(rank) + "_T" + std::to_string(numThreads) +
-            //                            "_LT" + std::to_string(lowThreshold) + "_R" + std::to_string(ratio);
-
-            std::string specification = "_LT" + std::to_string(lowThreshold) + "_R" + std::to_string(ratio);
-            filename_output.insert(filename_output.find("."), specification);
-
-            // full path
-            std::stringstream ss;
-            ss << output_folders[indexOut] << "/" << filename_output;
-
-            std::string fullPath = ss.str();
-            ss.str("");
-            //std::cout << "Full Path: " << fullPath << '\n';
-            // file is already in the vector
-            if (std::find(v_fullpath.begin(), v_fullpath.end(), fullPath) != v_fullpath.end())
-                continue;
-            v_fullpath.push_back(fullPath);
-
-            // Read image as colored image(1 as a flag)
-            //cv::Mat img = cv::imread("data/4987_21_HE.tif", 1); // default Mat is CV_8UC3(8-bit 3-channel color image) matrix
-            cv::Mat img = cv::imread(files[i], 1);
-
-            if (img.empty())
-            {
-                std::cerr << "ERROR 02: Could not open or find the image!\n";
-                //MPI_Finalize();         // Terminates MPI environment
-                return EXIT_FAILURE;
-            }
-            v_img.push_back(img);
         }
     }
 
+    // map input image with its output folder
+    for (int i = 0; i < files.size(); i++)
+    {
+        // extract name of a file
+        size_t pos = files[i].find("/") + 1;        // in order to get rid of folder
+        size_t end_pos = files[i].find(".");        // in order to get rid of suffix
+        size_t len = end_pos - pos;                    // in order to get name from file
+
+        // find output file
+        std::string o_folder = out_dir + '/' + files[i].substr(pos,len);
+        std::vector<std::string>::iterator it = std::find(output_folders.begin(), output_folders.end(), o_folder);
+
+        // find output folder's index in output_folders vector
+        int indexOut = 0;
+        if (it != output_folders.end())
+            indexOut = std::distance(output_folders.begin(), it);
+        else
+        {
+            std::cerr << "ERROR 04: Could not map input image with its output folder!\n";
+            return EXIT_FAILURE;
+        }
+        //std::cout << files[i] << " out: "<< output_folders[indexOut] << '\n';
+
+        // get output's file name
+        len = files[i].size() - pos;
+        std::string filename_output = files[i].substr(pos,len);
+        std::string specification = "_LT" + std::to_string(lowThreshold) + "_R" + std::to_string(ratio);
+        filename_output.insert(filename_output.find("."), specification);
+
+        // set full path of output with new name and output folder
+        std::stringstream ss;
+        ss << output_folders[indexOut] << "/" << filename_output;
+
+        std::string fullPath = ss.str();
+        ss.str("");
+        //std::cout << "Full Path: " << fullPath << '\n';
+
+        // file is already in the vector
+        if (std::find(v_fullpath.begin(), v_fullpath.end(), fullPath) != v_fullpath.end())
+            continue;
+        v_fullpath.push_back(fullPath);
+/*
+        // Read image as colored image(1 as a flag)
+        //cv::Mat img = cv::imread("data/4987_21_HE.tif", 1); // default Mat is CV_8UC3(8-bit 3-channel color image) matrix
+        cv::Mat img = cv::imread(files[i], 1);
+
+        if (img.empty())
+        {
+            std::cerr << "ERROR 02: Could not open or find the image!\n";
+            return EXIT_FAILURE;
+        }
+        v_img.push_back(img);
+*/
+    }
+    std::cout << "Files:\n";
+    for (auto& file : files)
+    {
+        std::cout << file << '\n';
+    }
+
+    std::cout << "Output folders:\n";
+    for (auto& file : output_folders)
+    {
+        std::cout << file << '\n';
+    }
+
+    std::cout << "Fullpaths:\n";
+    for (auto& file : v_fullpath)
+    {
+        std::cout << file << '\n';
+    }
+
+    /*for (auto& file: files)
+    {
+        std::cout << file << " in rank " << rank << "/" << numProc << std::endl;
+    }*/
+
+    std::cout << files.size() << " in rank " << rank << "/" << numProc << std::endl;
+
+    #pragma omp for
+    for (int i = 0; i < files.size(); ++i)
+    {
+        // Read image as colored image(1 as a flag)
+        cv::Mat img = cv::imread(files[i], 1);
+
+        // Convert to graycsale
+        cv::Mat img_gray;
+        cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
+
+        // Canny edge detection
+        cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
+
+        // Save img
+        //#pragma omp critical
+        cv::imwrite(v_fullpath[i], edges);
+        std::cout << "Save path: " << v_fullpath[i] << " Input: " << files[i] << " rank " << rank << "/" << numProc<< '\n';
+    }
+
     // broadcast images
-    MPI_Bcast(v_img.data(), v_img.size() * sizeof(decltype(v_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
+    // v_img u ostatnych procesoch neni inicializovany, cize v_img.size() je 0, preto to nefunguje
+    //MPI_Bcast(v_img.data(), v_img.size() * sizeof(decltype(v_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
 
-    // synchronize the image processing:
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    for (int i = 0; i < v_img.size(); ++i)
+    /*for (int i = 0; i < v_img.size(); ++i)
     {
         //printf("Hello from process %d/%d on %s.\n", rank, numProc, processor_name);
 
@@ -333,21 +356,18 @@ int main(int argc, char *argv[])
 
         // push and broadcast output image
         v_out_img.push_back(edges);
-        MPI_Bcast(v_out_img.data(), v_out_img.size() * sizeof(decltype(v_out_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
+        //MPI_Bcast(v_out_img.data(), v_out_img.size() * sizeof(decltype(v_out_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
         //printf("Rank: %d/%d", rank, numProc);
     }
-
-    // synchronize the image processing:
-    MPI_Barrier(MPI_COMM_WORLD);
 
     // write images on the root
     if (rank == 0)
     {
         // Set window
-        cv::namedWindow("Original image", cv::WINDOW_NORMAL);
+        //cv::namedWindow("Original image", cv::WINDOW_NORMAL);
 
         //Resize window
-        cv::resizeWindow("Original image", 512, 512);
+        //cv::resizeWindow("Original image", 512, 512);
 
         // Display original image
         for (int index = 0; index < v_out_img.size(); ++index) {
@@ -357,12 +377,12 @@ int main(int argc, char *argv[])
                 //cv::waitKey(0);
 
                 // Save the frame into a file if it does not exists
-                if (!std::filesystem::exists(v_fullpath[index]))
-                    cv::imwrite(v_fullpath[index], v_out_img[index]);
+                //if (!std::filesystem::exists(v_fullpath[index]))
+                cv::imwrite(v_fullpath[index], v_out_img[index]);
             }
             //printf("Rank: %d/%d", rank, numProc);
         }
-    }
+    }*/
     MPI_Finalize();         // Terminates MPI environment
     //cv::destroyAllWindows();
     return 0;
