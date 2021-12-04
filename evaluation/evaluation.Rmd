@@ -1,5 +1,5 @@
 ---
-title: "Evaluation"
+title: "Canny Edge Detection Filter"
 author: 
   - Erik Matovič
 date: November 2021
@@ -13,9 +13,40 @@ output:
     number_sections: true
 ---
 
-# Evaluation
+# Intro
 
-## Read data and import libraries
+Program's outputs, images with edge detection, are located in a new `output` subdirectory created based on names of input images found in the `data` folder.
+
+Image filter is using the Canny edge detector to identify edges in given images. We conducted numerous attempts with various minimum cut-off suppression values in the dataset. We realized the algorithm execution using multithreading and shared-memory multiprocessing to speed up finding edges in all images. However, it is not trivial to determinate lower bound threshold values.
+ 
+# Installation instructions
+
+Depending on your system of choice you will need to install the following dependencies:  
+ - mpiCC - Open MPI C++ wrapper compiler  
+ - [CMake](https://cmake.org) build system  
+ - [Open MPI](https://www.mpi-forum.org/) - The Message Passing Interface  
+ - [OpenMP](https://www.openmp.org/) - The Open Multi-Processing  
+ - [OpenCV](https://opencv.org/) - The Open Source Computer Vision Library  
+
+You can also use CMake directly to generate project files, see [Usage](#Usage).
+
+# Usage
+
+You can generate the project files by using the bash script from command line as shown below. It will generate the default for the given platform. It can be changed by adding a generator for your IDE. To find out all available generators, just run `cmake --help`.
+
+```bash
+./runCMake.sh src/main.cpp
+```
+
+After installation, the file should be installed into a new `_install` subdirectory. You can then run tests as follows:
+
+```bash
+./testProgram.sh
+```
+
+# Data
+
+Our data consists of time for each process and each thread. We created this dataset using the `testProgram.sh` bash script. The program run the Canny edge detection filter for 10 images(8 of them where roughly 1GB). Here is our dataset:
 
 ```{r}
 # for rendering run this command in console:
@@ -23,9 +54,29 @@ output:
 library(tidyverse)  
 library(ggplot2)
 data <- read_csv("time_tests.csv")
+data
 ```
 
-## Evaluation
+# Evaluation
+
+In the `evaluation` folder, we provided time tests. We created a bash script for the time tests that write a specific time of each program's execution in a CSV file. Subsequently, we conducted an evaluation using the programming language R, where we evaluated our tests using descriptive statistics.
+
+One of the tested inputs with a preview of one of his outputs with settings of low threshold equals 50 and ratio equals 2:  
+
+<p align="center">
+	<img src="../data/lena.bmp">
+	<img src="../output/lena/lena_LT50_R2.bmp">
+</p>
+
+Proof that the program realizes edge detection in different processes and even in separate threads, rank is the process's ID. When one process makes edge detection for more than one file, it uses different threads for every image if there are available.
+
+<p align="center">
+  <img src="../figures/output.png">
+</p>
+
+## Number of processes
+
+Show which processes we have. We have 6 different processes(1,2,3,4,8,16).
 
 ```{r}
 numProcesses <- data %>%
@@ -40,88 +91,354 @@ numProcessesIndex <- as.integer(1)
 
 # display
 numProcesses
-numProcessesSize
 ```
+## Evaluation for 1 process
 
+Show number of threads with its time for process 1.
 
 ```{r}
 p1 = data %>%
   filter(processes == 1) %>% #as.integer(numProcesses[numProcessesIndex,])) %>%
   select(threads, time)
 p1
+```
+Maximum time for 1 process was with 1 thread(roughly 31 seconds).
 
+```{r}
+p1[which.max(p1$time),]
+```
+Minimum time for 1 process was with 8 threads(roughly 27 seconds).
+
+```{r}
+p1[which.min(p1$time),]
+```
+Using multithreading for 1 process provides time-saving around 13%.
+
+```{r}
+100 - p1[which.min(p1$time),][2] / p1[which.max(p1$time),][2] * 100
+```
+We have provided also graph of time with threads.
+
+```{r}
 # increment index
 numProcessesIndex <- numProcessesIndex + 1
 
 ggplot(p1, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") + 
   geom_point() + ggtitle("1 process")
 ```
+## Evaluation for 2 processes
 
 ```{r}
 p2 = data %>%
   filter(processes == 2) %>%
   select(threads, time)
 p2
+```
+Maximum time for 2 processes was with 1 thread(roughly 21 seconds).
 
+```{r}
+p2[which.max(p2$time),]
+```
+Minimum time for 2 processes was with 4 threads(roughly 19 seconds).
+
+```{r}
+p2[which.min(p2$time),]
+```
+Using multithreading for 2 processes provides time-saving around 12%.
+
+```{r}
+100 - p2[which.min(p2$time),][2] / p2[which.max(p2$time),][2] * 100
+```
+Using 2 processes instead of 1 process with maximum time for each(only 1 thread) provides time-saving around 32%.
+
+```{r}
+100 - p2[which.max(p2$time),][2] / p1[which.max(p1$time),][2] * 100
+```
+This also applies for minimum time - using 2 processes instead of 1 process with minimum time for each(with multithreading) provides time-saving around 31%.
+
+```{r}
+100 - p2[which.min(p2$time),][2] / p1[which.min(p1$time),][2] * 100
+```
+We have provided also graph of time with threads.
+
+```{r}
 # increment index
 numProcessesIndex <- numProcessesIndex + 1
 
 ggplot(p2, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") + 
   geom_point() + ggtitle("2 processes")
 ```
+## Evaluation for 3 processes
 
 ```{r}
 p3 = data %>%
   filter(processes == 3) %>%
   select(threads, time)
 p3
+```
+Maximum time for 3 processes was with 1 thread(roughly 15 seconds).
 
+```{r}
+p3[which.max(p3$time),]
+```
+Minimum time for 3 processes was with 2 threads(roughly 10 seconds).
+
+```{r}
+p3[which.min(p3$time),]
+```
+Using multithreading for 3 processes provides time-saving around 32%.
+
+```{r}
+100 - p3[which.min(p3$time),][2] / p3[which.max(p3$time),][2] * 100
+```
+Using 3 processes instead of 1 process with maximum time for each(only 1 thread) provides time-saving around 50%.
+
+```{r}
+100 - p3[which.max(p3$time),][2] / p1[which.max(p1$time),][2] * 100
+```
+This also applies for minimum time - using 3 processes instead of 1 process with minimum time for each(with multithreading) provides time-saving around 61%.
+
+```{r}
+100 - p3[which.min(p3$time),][2] / p1[which.min(p1$time),][2] * 100
+```
+Using 3 processes instead of 2 processes with maximum time for each(only 1 thread) provides time-saving around 28%.
+
+```{r}
+100 - p3[which.max(p3$time),][2] / p2[which.max(p2$time),][2] * 100
+```
+This also applies for minimum time - using 3 processes instead of 2 processes with minimum time for each(with multithreading) provides time-saving around 44%.
+
+```{r}
+100 - p3[which.min(p3$time),][2] / p2[which.min(p2$time),][2] * 100
+```
+We have provided also graph of time with threads.
+
+```{r}
 # increment index
 numProcessesIndex <- numProcessesIndex + 1
 
 ggplot(p3, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") + 
   geom_point() + ggtitle("3 processes")
 ```
+## Evaluation for 4 processes
 
 ```{r}
 p4 = data %>%
   filter(processes == 4) %>%
   select(threads, time)
 p4
+```
+Maximum time for 4 processes was with 1 thread(roughly 13 seconds).
 
+```{r}
+p4[which.max(p4$time),]
+```
+Minimum time for 4 processes was with 32 threads(roughly 10 seconds).
+
+```{r}
+p4[which.min(p4$time),]
+```
+Using multithreading for 4 processes provides time-saving around 18%.
+
+```{r}
+100 - p4[which.min(p4$time),][2] / p4[which.max(p4$time),][2] * 100
+```
+Using 4 processes instead of 1 process with maximum time for each(only 1 thread) provides time-saving around 58%.
+
+```{r}
+100 - p4[which.max(p4$time),][2] / p1[which.max(p1$time),][2] * 100
+```
+This also applies for minimum time - using 4 processes instead of 1 process with minimum time for each(with multithreading) provides time-saving around 60%.
+
+```{r}
+100 - p4[which.min(p4$time),][2] / p1[which.min(p1$time),][2] * 100
+```
+Using 4 processes instead of 2 processes with maximum time for each(only 1 thread) provides time-saving around 38%.
+
+```{r}
+100 - p4[which.max(p4$time),][2] / p2[which.max(p2$time),][2] * 100
+```
+This also applies for minimum time - using 4 processes instead of 2 processes with minimum time for each(with multithreading) provides time-saving around 43%.
+
+```{r}
+100 - p4[which.min(p4$time),][2] / p2[which.min(p2$time),][2] * 100
+```
+Using 4 processes instead of 3 processes with maximum time for each(only 1 thread) provides time-saving around 15%.
+
+```{r}
+100 - p4[which.max(p4$time),][2] / p3[which.max(p3$time),][2] * 100
+```
+This also applies for minimum time - using 4 processes instead of 3 processes with minimum time for each(with multithreading) provides time-saving around the same; 3 processes with multithreading are faster around 3%.
+
+```{r}
+100 - p4[which.min(p4$time),][2] / p3[which.min(p3$time),][2] * 100
+```
+We have provided also graph of time with threads.
+
+```{r}
 # increment index
 numProcessesIndex <- numProcessesIndex + 1
 
 ggplot(p4, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") + 
   geom_point() + ggtitle("4 processes")
 ```
+## Evaluation for 8 processes
 
 ```{r}
 p8 = data %>%
   filter(processes == 8) %>%
   select(threads, time)
 p8
+```
+Maximum time for 8 processes was with 16 threads(roughly 11 seconds).
 
+```{r}
+p8[which.max(p8$time),]
+```
+Minimum time for 8 processes was with 32 threads(roughly 10 seconds).
+
+```{r}
+p8[which.min(p8$time),]
+```
+Using multithreading for 8 processes provides time-saving around 5%.
+
+```{r}
+100 - p8[which.min(p8$time),][2] / p8[which.max(p8$time),][2] * 100
+```
+Using 8 processes instead of 1 process with maximum time for each(only 1 thread) provides time-saving around 65%.
+
+```{r}
+100 - p8[which.max(p8$time),][2] / p1[which.max(p1$time),][2] * 100
+```
+This also applies for minimum time - using 8 processes instead of 1 process with minimum time for each(with multithreading) provides time-saving around 62%.
+
+```{r}
+100 - p8[which.min(p8$time),][2] / p1[which.min(p1$time),][2] * 100
+```
+Using 8 processes instead of 2 processes with maximum time for each(only 1 thread) provides time-saving around 48%.
+
+```{r}
+100 - p8[which.max(p8$time),][2] / p2[which.max(p2$time),][2] * 100
+```
+This also applies for minimum time - using 8 processes instead of 2 processes with minimum time for each(with multithreading) provides time-saving around 45%.
+
+```{r}
+100 - p8[which.min(p8$time),][2] / p2[which.min(p2$time),][2] * 100
+```
+Using 8 processes instead of 3 processes with maximum time for each(only 1 thread) provides time-saving around 29%.
+
+```{r}
+100 - p8[which.max(p8$time),][2] / p3[which.max(p3$time),][2] * 100
+```
+This also applies for minimum time - using 8 processes instead of 3 processes with minimum time for each(with multithreading) provides time-saving around the same; 8 processes with multithreading are faster around 0,15%.
+
+```{r}
+100 - p8[which.min(p8$time),][2] / p3[which.min(p3$time),][2] * 100
+```
+Using 8 processes instead of 4 processes with maximum time for each(only 1 thread) provides time-saving around 16%.
+
+```{r}
+100 - p8[which.max(p8$time),][2] / p4[which.max(p4$time),][2] * 100
+```
+This also applies for minimum time - using 8 processes instead of 4 processes with minimum time for each(with multithreading) provides time-saving around the same; 8 processes with multithreading are faster around 3%.
+
+```{r}
+100 - p8[which.min(p8$time),][2] / p4[which.min(p4$time),][2] * 100
+```
+We have provided also graph of time with threads.
+
+```{r}
 # increment index
 numProcessesIndex <- numProcessesIndex + 1
 
 ggplot(p8, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") + 
   geom_point() + ggtitle("8 processes")
 ```
-
+## Evaluation for 16 processes
 
 ```{r}
 p16 = data %>%
   filter(processes == 16) %>%
   select(threads, time)
 p16
+```
+Maximum time for 16 processes was with 32 threads(roughly 12 seconds).
 
+```{r}
+p16[which.max(p16$time),]
+```
+Minimum time for 16 processes was with 4 threads(roughly 10 seconds).
+
+```{r}
+p16[which.min(p16$time),]
+```
+Using multithreading for 16 processes provides time-saving around 11%.
+
+```{r}
+100 - p16[which.min(p16$time),][2] / p16[which.max(p16$time),][2] * 100
+```
+Using 16 processes instead of 1 process with maximum time for each provides time-saving around 61%.
+
+```{r}
+100 - p16[which.max(p16$time),][2] / p1[which.max(p1$time),][2] * 100
+```
+This also applies for minimum time - using 16 processes instead of 1 process with minimum time for each provides time-saving around 61%.
+
+```{r}
+100 - p16[which.min(p16$time),][2] / p1[which.min(p1$time),][2] * 100
+```
+Using 16 processes instead of 2 processes with maximum time for each(only 1 thread) provides time-saving around 44%.
+
+```{r}
+100 - p16[which.max(p16$time),][2] / p2[which.max(p2$time),][2] * 100
+```
+This also applies for minimum time - using 16 processes instead of 2 processes with minimum time for each(with multithreading) provides time-saving around 44%.
+
+```{r}
+100 - p16[which.min(p16$time),][2] / p2[which.min(p2$time),][2] * 100
+```
+Using 16 processes instead of 3 processes with maximum time for each provides time-saving around 22%.
+
+```{r}
+100 - p16[which.max(p16$time),][2] / p3[which.max(p3$time),][2] * 100
+```
+This also applies for minimum time - using 16 processes instead of 3 processes with minimum time for each provides time-saving around the same; 3 processes with multithreading are faster around 2%.
+
+```{r}
+100 - p16[which.min(p16$time),][2] / p3[which.min(p3$time),][2] * 100
+```
+Using 16 processes instead of 4 processes with maximum time for each provides time-saving around 9%.
+
+```{r}
+100 - p16[which.max(p16$time),][2] / p4[which.max(p4$time),][2] * 100
+```
+This also applies for minimum time - using 16 processes instead of 4 processes with minimum time for each provides time-saving around the same; 16 processes with multithreading are faster around 1%.
+
+```{r}
+100 - p16[which.min(p16$time),][2] / p4[which.min(p4$time),][2] * 100
+```
+Using 16 processes instead of 8 processes with maximum time for each does not provide time-saving, 8 process are faster around 9%.
+
+```{r}
+100 - p16[which.max(p16$time),][2] / p8[which.max(p8$time),][2] * 100
+```
+This also applies for minimum time. However, using 16 processes instead of 8 processes with minimum time for each provides time-saving around the same; 8 processes with multithreading are faster around 2%.
+
+```{r}
+100 - p16[which.min(p16$time),][2] / p8[which.min(p8$time),][2] * 100
+```
+We have provided also graph of time with threads.
+
+```{r}
 # increment index
 numProcessesIndex <- numProcessesIndex + 1
 
 ggplot(p16, aes(x=time, y=factor(threads), group=1)) + geom_line(color="red") + 
   geom_point() + ggtitle("16 processes")
 ```
+## Show time information for processes and threads
+
+We labeled our data, where P1 means 1 process and T1 means 1 thread.
 
 ```{r}
 data_label= data %>%
@@ -129,20 +446,41 @@ data_label= data %>%
 data_label
 ```
 
+We have provided also graph of time with threads with processes.
+
 ```{r}
 ggplot(data_label, aes(x=factor(processes), y=factor(threads), label=labels)) + 
   geom_point(aes(size=time, color=time)) + 
   geom_text(nudge_y = 0.30)
 ```
-Max:
+Maximum time(around 31 seconds) is for 1 process and 1 thread.
 
 ```{r}
 data_label[which.max(data_label$time),]
 ```
 
-Min:
+Minimum time(around 10 seconds) is for 8 processes with 32 threads.
 
 ```{r}
 data_label[which.min(data_label$time),]
 ```
 
+However, a similar time have:  
+ - 3 processes with more than 2 threads  
+ - 4 processes with more than 16 threads  
+ - 8 processes, threads does not matter  
+ - 16 processes, threads does not matter
+
+```{r}
+data_label %>%
+  filter(time < 11)
+```
+Using multithreading and multiprocessing provides time-saving around 66%.
+
+```{r}
+100 - data_label[which.min(data_label$time),][3] / data_label[which.max(data_label$time),][3] * 100
+```
+
+# Conclusion
+
+We have found out that using multiprocessing with multithreading provides time-saving around 66%. However, parallelization is not infinite; there are limitations.  We have been using ten images, and therefore the best times reached 3 and 4 processes with multithreading and 8 and 16 processes, where multithreading did not matter. We also provided time savings, roughly 66% against the sequential program.  This proves that the program parallelization with an increased number of images provides time savings. Still, many processes with several threads must be used accordingly to many photos. The best time for ten images has eight processes with 32 threads.

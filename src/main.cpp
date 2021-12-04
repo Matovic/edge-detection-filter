@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 
     int numProc, rank = 0, namelen;
     char processor_name[MPI_MAX_PROCESSOR_NAME];
-    int iam = 0, np = 1;
+    int thread_id = 0, num_threads = 1;                     // num_threads is total threads
 
     MPI_Init(&argc, &argv);                                 // initialize MPI
     MPI_Comm_size(MPI_COMM_WORLD, &numProc);                // get number of processes
@@ -216,10 +216,6 @@ int main(int argc, char *argv[])
 
         // create new folder name based on name of a file
         std::string folderName = out_dir + '/' + files[i].substr(pos,len);
-
-        // files are processed by different processors because of an MPI
-        if (i % numProc != rank)
-            continue;
 
         // if file is already in the vector
         if (std::find(output_folders.begin(), output_folders.end(), folderName) != output_folders.end())
@@ -282,108 +278,33 @@ int main(int argc, char *argv[])
         if (std::find(v_fullpath.begin(), v_fullpath.end(), fullPath) != v_fullpath.end())
             continue;
         v_fullpath.push_back(fullPath);
-/*
-        // Read image as colored image(1 as a flag)
-        //cv::Mat img = cv::imread("data/4987_21_HE.tif", 1); // default Mat is CV_8UC3(8-bit 3-channel color image) matrix
-        cv::Mat img = cv::imread(files[i], 1);
+    }
 
-        if (img.empty())
+    #pragma omp parallel default(shared) private(thread_id)
+    {
+        num_threads = omp_get_num_threads();            // get all threads
+        thread_id = omp_get_thread_num();               // get thread id
+        int i;
+        #pragma omp for private(i)
+        for (i = 0; i < files.size(); ++i)
         {
-            std::cerr << "ERROR 02: Could not open or find the image!\n";
-            return EXIT_FAILURE;
+            // Read image as colored image(1 as a flag)
+            cv::Mat img = cv::imread(files[i], 1);
+
+            // Convert to graycsale
+            cv::Mat img_gray;
+            cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
+
+            // Canny edge detection
+            cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
+
+            // Save img
+            cv::imwrite(v_fullpath[i], edges);
+            std::cout << "Save path: " << v_fullpath[i] << " Input: " << files[i] <<
+                      " rank " << rank << "/" << numProc << " thread " << thread_id << "/" << num_threads << '\n';
         }
-        v_img.push_back(img);
-*/
+        //std::cout << "rank " << rank << "/" << numProc << " thread " << thread_id << "/" << num_threads << '\n';
     }
-    std::cout << "Files:\n";
-    for (auto& file : files)
-    {
-        std::cout << file << '\n';
-    }
-
-    std::cout << "Output folders:\n";
-    for (auto& file : output_folders)
-    {
-        std::cout << file << '\n';
-    }
-
-    std::cout << "Fullpaths:\n";
-    for (auto& file : v_fullpath)
-    {
-        std::cout << file << '\n';
-    }
-
-    /*for (auto& file: files)
-    {
-        std::cout << file << " in rank " << rank << "/" << numProc << std::endl;
-    }*/
-
-    std::cout << files.size() << " in rank " << rank << "/" << numProc << std::endl;
-
-    #pragma omp for
-    for (int i = 0; i < files.size(); ++i)
-    {
-        // Read image as colored image(1 as a flag)
-        cv::Mat img = cv::imread(files[i], 1);
-
-        // Convert to graycsale
-        cv::Mat img_gray;
-        cv::cvtColor(img, img_gray, cv::COLOR_BGR2GRAY);
-
-        // Canny edge detection
-        cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
-
-        // Save img
-        //#pragma omp critical
-        cv::imwrite(v_fullpath[i], edges);
-        std::cout << "Save path: " << v_fullpath[i] << " Input: " << files[i] << " rank " << rank << "/" << numProc<< '\n';
-    }
-
-    // broadcast images
-    // v_img u ostatnych procesoch neni inicializovany, cize v_img.size() je 0, preto to nefunguje
-    //MPI_Bcast(v_img.data(), v_img.size() * sizeof(decltype(v_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
-
-    /*for (int i = 0; i < v_img.size(); ++i)
-    {
-        //printf("Hello from process %d/%d on %s.\n", rank, numProc, processor_name);
-
-        // Convert to graycsale
-        cv::Mat img_gray;
-        cv::cvtColor(v_img[i], img_gray, cv::COLOR_BGR2GRAY);
-
-        // Canny edge detection
-        cv::Mat edges = std::move(cannyEdgeDetector(img_gray, lowThreshold, ratio, kernel_size));
-
-        // push and broadcast output image
-        v_out_img.push_back(edges);
-        //MPI_Bcast(v_out_img.data(), v_out_img.size() * sizeof(decltype(v_out_img)::value_type), MPI_BYTE, 0, MPI_COMM_WORLD );
-        //printf("Rank: %d/%d", rank, numProc);
-    }
-
-    // write images on the root
-    if (rank == 0)
-    {
-        // Set window
-        //cv::namedWindow("Original image", cv::WINDOW_NORMAL);
-
-        //Resize window
-        //cv::resizeWindow("Original image", 512, 512);
-
-        // Display original image
-        for (int index = 0; index < v_out_img.size(); ++index) {
-            if (!v_out_img[index].empty())
-            {
-                //cv::imshow("Original image", v_out_img[index]);
-                //cv::waitKey(0);
-
-                // Save the frame into a file if it does not exists
-                //if (!std::filesystem::exists(v_fullpath[index]))
-                cv::imwrite(v_fullpath[index], v_out_img[index]);
-            }
-            //printf("Rank: %d/%d", rank, numProc);
-        }
-    }*/
     MPI_Finalize();         // Terminates MPI environment
-    //cv::destroyAllWindows();
     return 0;
 }
