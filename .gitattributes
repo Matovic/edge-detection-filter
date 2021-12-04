@@ -1,2 +1,2 @@
-./evaluation/*.html linguist-vendored
+./evaluation/* linguist-generated
 *.[Rr]md linguist-language=R
