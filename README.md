@@ -45,14 +45,14 @@ In the `evaluation` folder, we provided time tests. We created a bash script for
 One of the tested inputs with a preview of one of his outputs with settings of low threshold equals 50 and ratio equals 2:  
 
 <p align="center">
-	<img src="../data/lena.bmp">
-	<img src="../output/lena/lena_LT50_R2.bmp">
+	<img src="./data/lena.bmp">
+	<img src="./output/lena/lena_LT50_R2.bmp">
 </p>
 
 Proof that the program realizes edge detection in different processes and even in separate threads, rank is the process's ID. When one process makes edge detection for more than one file, it uses different threads for every image if there are available.
 
 <p align="center">
-  <img src="../figures/output.png">
+  <img src="./figures/output.png">
 </p>
 
 Preview from the evaluation file:  
