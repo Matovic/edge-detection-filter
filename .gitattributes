@@ -1,4 +1,4 @@
-./evaluation/* linguist-vendored
+evaluation/*.html linguist-vendored=true
 
 # Handle line endings automatically for files detected as text
 # and leave all files detected as binary untouched.
@@ -11,14 +11,12 @@
 *.gitattributes text
 .gitignore      text
 *.md            text diff=markdown
-*.html		text
 
 #
 # Exclude files from exporting
 #
 .gitattributes  export-ignore
 .gitignore      export-ignore
-*.html      	export-ignore
 
 #
 # Enable syntax highlighting for files with `.gitattributes` extensions.
