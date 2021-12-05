@@ -1,2 +1,2 @@
-./evaluation/* linguist-generated
+./evaluation/* linguist-vendored
 *.[Rr]md linguist-language=R
