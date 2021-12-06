@@ -34,9 +34,7 @@ After installation, the file should be installed into a new `_install` subdirect
 
 ## Data
 
-Our data consists of time for each process and each thread. We created this dataset using the `testProgram.sh` bash script. The program run the Canny edge detection filter for 10 images(8 of them where roughly 1GB).
-
-Our data consists of time for each process and each thread. We created this dataset using the `testProgram.sh` bash script. The program run the Canny edge detection filter for 10 images(8 of them where roughly 1GB). Here is our dataset:
+Our evaluation data consists of time for each process and each thread. We created this dataset using the `testProgram.sh` bash script. The program run the Canny edge detection filter for the dataset of 10 images(8 of them where roughly 1GB).
 
 ## Evaluation
 
