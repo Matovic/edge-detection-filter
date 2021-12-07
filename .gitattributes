@@ -1,3 +1,4 @@
+# Ignore HTML files
 evaluation/*.html linguist-vendored=true
 
 # Handle line endings automatically for files detected as text
