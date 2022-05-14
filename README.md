@@ -1,15 +1,15 @@
 # Edge Detection Filter
 
-Program's outputs, images with edge detection, are located in a new `output` subdirectory created based on names of input images found in the `data` folder.  
+Program's outputs, images with edge detection, are located in a new `output` subdirectory created based on the names of input images found in the `data` folder.  
 
-Image filter is using the Canny edge detector to identify edges in given images. We conducted numerous attempts with various minimum cut-off suppression values in the dataset. We realized the algorithm execution using multithreading and shared-memory multiprocessing to speed up finding edges in all images. However, it is not trivial to determinate lower bound threshold values.
+The image filter uses the Canny edge detector to identify edges in given images. We conducted numerous attempts with various minimum cut-off suppression values in the dataset. We realized the algorithm execution using multithreading and shared-memory multiprocessing to speed up finding edges in all images. However, it is not trivial to determine lower bound threshold values.
 
 ## Authors
  - [Erik Matovič](https://github.com/Matovic)
  
 ## Installation instructions
 
-Depending on your system of choice you will need to install the following dependencies:
+Depending on your system of choice, you will need to install the following dependencies:
 * mpiCC - Open MPI C++ wrapper compiler 
 * [CMake](https://cmake.org) build system
 * [Open MPI](https://www.mpi-forum.org/) - The Message Passing Interface
@@ -20,7 +20,7 @@ You can also use CMake directly to generate project files, see [Usage](#Usage).
 
 ## Usage
 
-You can generate the project files by using the bash script from command line as shown below. It will generate the default for the given platform. It can be changed by adding a generator for your IDE. To find out all available generators, just run `cmake --help`.
+You can generate the project files by using the bash script from the command line as shown below. It will generate the default for the given platform. It can be changed by adding a generator for your IDE. To find out all available generators, just run `cmake --help`.
 
 ```bash
 ./runCMake.sh src/main.cpp
